@@ -202,11 +202,12 @@ app.layout = html.Div([
         id='input_year',
         ),
 
-    dcc.Graph(id='fig_samlet_overblik'),
     dcc.Graph(id='grafen'),
+    dcc.Graph(id='grafen_2'),
     dcc.Graph(id='fig_gram'),
     dcc.Graph(id='fig_distrikt'),
     dcc.Graph(id='fig_box'),
+    dcc.Graph(id='fig_samlet_overblik'),
     ])
 
 """CALL BACKS"""
@@ -258,8 +259,9 @@ def update_gram_olie(input_city):
     df_temp = df_temp[(df_temp['Gram pr. kWh'] > 0)& (df_temp['Gram pr. kWh'] < 555)]
     df_temp = df_temp[(df_temp['Brændolie forbrug'] > 0)& (df_temp['Brændolie forbrug'] < 2500)]
     df_temp = df_temp[(df_temp['Date'].isin(pd.date_range(start='1/1/2020', end='31/12/2020')))]
+    #df_temp['year'] = df_temp['Date'].dt.year.astype(str)
 
-    fig_gram = px.scatter(df_temp[df_temp['City'].isin(input_city)], x="Elvirkningsgrad", y= "Gram pr. kWh",color ='City', marginal_x="violin", marginal_y="violin")
+    fig_gram = px.scatter(df_temp[df_temp['City'].isin(input_city)], x="Brændolie forbrug", y= "Gram pr. kWh",color ='City', marginal_x="violin", marginal_y="violin")
     fig_gram.update_layout(title = 'Korrelation af "Gramolie" og "Elvirkningrad"')
 
     return fig_gram
@@ -276,11 +278,11 @@ def update_distrikt(input_city):
     df_temp = df_temp[(df_temp['Brændolie forbrug'] > 0)& (df_temp['Brændolie forbrug'] < 2500)]
     df_temp = df_temp[(df_temp['Date'].isin(pd.date_range(start='1/1/2020', end='31/12/2020')))]
 
-    fig_distrikt = px.scatter(df_temp, x="Elvirkningsgrad", y= "Gram pr. kWh", color ='Distrikt', marginal_x="violin", marginal_y="violin")
+    fig_distrikt = px.scatter(df_temp, x="Brændolie forbrug", y= "Gram pr. kWh", color ='Distrikt', marginal_x="violin", marginal_y="violin")
     #fig_distrikt = px.scatter(df_temp.groupby(['Distrikt','Date']).mean().reset_index(), x="Elvirkningsgrad", y= "Gram pr. kWh", color ='Distrikt', marginal_x="violin", marginal_y="violin")
-    fig_distrikt.update_layout(title = 'Korrelation af "Gramolie" og "Elvirkningrad"')
+    fig_distrikt.update_layout(title = 'Korrelation af "Gramolie" og "Brændolie forbrug"')
 
-    fig2 = px.scatter(df_temp[df_temp['City'].isin(input_city)], x="Elvirkningsgrad", y= "Gram pr. kWh",color ='City', marginal_x="violin", marginal_y="violin")
+    fig2 = px.scatter(df_temp[df_temp['City'].isin(input_city)], x="Brændolie forbrug", y= "Gram pr. kWh",color ='City', marginal_x="violin", marginal_y="violin")
 
     for i,v in enumerate(fig2.data):
         fig_distrikt.add_trace(v)
@@ -301,7 +303,7 @@ def update_output_div(input_city):
 
     df_plot = df[df['City'] == city][observationer + [tid, 'City']]
     df_plot = df_plot.sort_values(by=[tid])
-    rolling_mean = 1
+    rolling_mean = 14
 
     mean_el = df_plot[['Produktion total', 'City']][(df_plot['City'] == city) & (df_plot['Produktion total'] > 0) & (df_plot['Produktion total'] < 50000000)].mean()
     std_el = df_plot[['Produktion total', 'City']][(df_plot['City'] == city) & (df_plot['Produktion total'] > 0) & (df_plot['Produktion total'] < 50000000)].std()
@@ -415,6 +417,34 @@ df_plot[df_plot[tid].between(str(year)+'-01-01',str(year)+'-12-31')][observation
                        selector={"name":year+' '+observationer[1]}),
     fig.update_traces(patch={"opacity":1},
                        selector={"name":year+' '+observationer[2]})
+    return fig
+
+
+@app.callback(
+    Output(component_id='grafen_2', component_property='figure'),
+    Input(component_id='input_city', component_property='value'),
+    Input(component_id='input_year', component_property='value')
+)
+def update_output_div(input_city, input_year):
+
+    if input_city:
+        city=input_city[-1]
+        print(city)
+    else:
+        city = '013 Narsamijit'
+
+    df_plot = df[df['City'] == city][observationer + [tid, 'City']]
+    df_plot['year'] = df_plot[tid].dt.year
+    df_plot['month'] = df_plot[tid].dt.quarter
+    df_plot = df_plot.sort_values(by=['month', 'year'])
+    df_plot['month'] = df_plot['month'].astype(str)
+    df_plot['year'] = df_plot['year'].astype(str)
+
+    rolling_mean = 14
+
+
+    fig = px.violin(df_plot, x='year', y='Gram pr. kWh', color='month')
+
     return fig
 
 """ Run application  """
